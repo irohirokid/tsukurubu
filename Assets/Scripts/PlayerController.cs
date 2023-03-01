@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using UniRx;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
@@ -9,11 +10,12 @@ public class PlayerController : MonoBehaviour
     float horizontalInput;
     float verticalInput;
 
-    private float prevSpeed = 0;
+    ReactiveProperty<float> Magnitude = new ReactiveProperty<float>();
 
     void Start()
     {
         animator = GetComponent<Animator>();
+        Magnitude.Select(x => x > 0).DistinctUntilChanged().Subscribe(x => animator.SetTrigger(x ? "TrRun" : "TrIdle"));
     }
 
     void Update()
@@ -22,19 +24,11 @@ public class PlayerController : MonoBehaviour
         verticalInput = Input.GetAxis("Vertical");
 
         var v = Vector3.forward * Time.deltaTime * speed * verticalInput + Vector3.right * Time.deltaTime * speed * horizontalInput;
-        if (v.magnitude > 0)
+        Magnitude.Value = v.magnitude;
+
+        if (Magnitude.Value > 0)
         {
             transform.SetPositionAndRotation(transform.position + v, Quaternion.LookRotation(v));
         }
-
-        if (prevSpeed == 0 && v.magnitude > 0)
-        {
-            animator.SetTrigger("TrRun");
-        }
-        else if (prevSpeed > 0 && v.magnitude == 0)
-        {
-            animator.SetTrigger("TrIdle");
-        }
-        prevSpeed = v.magnitude;
     }
 }
