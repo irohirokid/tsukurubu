@@ -1,6 +1,8 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UniRx;
+using UniRx.Triggers;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
@@ -15,20 +17,17 @@ public class PlayerController : MonoBehaviour
     void Start()
     {
         animator = GetComponent<Animator>();
-        Magnitude.Select(x => x > 0).DistinctUntilChanged().Subscribe(x => animator.SetTrigger(x ? "TrRun" : "TrIdle"));
+
+        var inputVectorStream = this.UpdateAsObservable().Select(inputVector);
+        inputVectorStream.Where(v => v.magnitude > 0)
+                         .Subscribe(v => transform.SetPositionAndRotation(transform.position + v, Quaternion.LookRotation(v)));
+        inputVectorStream.Select(v => v.magnitude > 0)
+                         .DistinctUntilChanged()
+                         .Subscribe(x => animator.SetTrigger(x ? "TrRun" : "TrIdle"));
     }
 
-    void Update()
+    Vector3 inputVector(Unit _)
     {
-        horizontalInput = Input.GetAxis("Horizontal");
-        verticalInput = Input.GetAxis("Vertical");
-
-        var v = Vector3.forward * Time.deltaTime * speed * verticalInput + Vector3.right * Time.deltaTime * speed * horizontalInput;
-        Magnitude.Value = v.magnitude;
-
-        if (Magnitude.Value > 0)
-        {
-            transform.SetPositionAndRotation(transform.position + v, Quaternion.LookRotation(v));
-        }
+        return Vector3.forward * Time.deltaTime * speed * Input.GetAxis("Vertical") + Vector3.right * Time.deltaTime * speed * Input.GetAxis("Horizontal");
     }
 }
